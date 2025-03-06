@@ -99,16 +99,22 @@ public class ItemBuilder {
 		SkullMeta skullMeta = (SkullMeta) item.getItemMeta();
 
 		UUID headUuid = uuid == null ? genericUUID : uuid;
-		String playerName = uuid == null ? "" : Bukkit.getOfflinePlayer(uuid).getName();
+		// String playerName = uuid == null ? "" : Bukkit.getOfflinePlayer(uuid).getName();
+		//
+		// if (playerName == null) {
+		// 	playerName = "";
+		// }
 
 		GameProfile profile;
 		if (texture != null) {
 			profile = getProfile(headUuid, texture, "");
-		} else {
-			profile = new GameProfile(headUuid, playerName);
+			applyProfile(skullMeta, profile);
 		}
+		// else {
+		// 	profile = new GameProfile(headUuid, "Steve");
+		// }
 
-		applyProfile(skullMeta, profile);
+		// applyProfile(skullMeta, profile);
 
 		skullMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
 		skullMeta.addItemFlags(ItemFlag.HIDE_DESTROYS);
