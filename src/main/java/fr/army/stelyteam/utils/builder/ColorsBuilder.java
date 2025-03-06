@@ -48,9 +48,25 @@ public class ColorsBuilder {
             rgbMatcher.appendReplacement(rgbBuilder, parseHexColor(hexCode));
         }
         rgbMatcher.appendTail(rgbBuilder);
+
         return rgbBuilder.toString();
     }
 
+    public static String convertColors(String input) {
+        String output = input;
+
+        // Replace hex colors: convert '&#FFFFFF' to '<#FFFFFF>'
+        Pattern hexPattern = Pattern.compile("&#([A-Fa-f0-9]{6})");
+        Matcher matcher = hexPattern.matcher(output);
+        output = matcher.replaceAll("<#$1>");
+
+        // Replace the legacy color codes from the Colors enum (only process the first 16 actual colors)
+        for (Colors color : Colors.values()) {
+            output = output.replace(color.getColor(), "<" + color.name().toLowerCase() + ">");
+        }
+
+        return output;
+    }
 
     public boolean prefixTeamIsTooLong(String prefixTeam){
         int colors = getPrefixColors(prefixTeam).size();

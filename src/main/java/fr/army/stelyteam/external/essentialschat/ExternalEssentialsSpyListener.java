@@ -17,7 +17,7 @@ public class ExternalEssentialsSpyListener implements Listener {
     private ColorsBuilder colorBuilder = plugin.getColorsBuilder();
     
     @SuppressWarnings("unused")
-    @EventHandler(priority = EventPriority.NORMAL)
+    @EventHandler(priority = EventPriority.HIGHEST)
     private void onSpy(LocalChatSpyEvent event) {
         Player player = event.getPlayer();
         Team team = Team.getFromCache(player);
@@ -25,6 +25,7 @@ public class ExternalEssentialsSpyListener implements Listener {
 
         if (team != null) {
             prefix = colorBuilder.replaceColor(team.getTeamPrefix());
+            prefix = colorBuilder.convertColors(prefix);
         }
 
         // ChatColor.translateAlternateColorCodes(0, prefix)
