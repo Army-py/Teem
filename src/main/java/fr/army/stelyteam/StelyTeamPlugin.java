@@ -1,8 +1,11 @@
 package fr.army.stelyteam;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Objects;
@@ -32,6 +35,7 @@ import fr.army.stelyteam.utils.manager.MessageManager;
 import fr.army.stelyteam.utils.manager.database.DatabaseManager;
 import fr.army.stelyteam.utils.manager.database.SQLiteDataManager;
 import fr.army.stelyteam.utils.manager.serializer.ItemStackSerializer;
+import org.jetbrains.annotations.NotNull;
 
 public class StelyTeamPlugin extends JavaPlugin {
 
@@ -61,8 +65,12 @@ public class StelyTeamPlugin extends JavaPlugin {
     public void onEnable() {
         plugin = this;
 
-        this.config = initFile(this.getDataFolder(), "config.yml");
-        this.messages = initFile(this.getDataFolder(), "messages.yml");
+        try {
+            this.config = initFile("config.yml");
+            this.messages = initFile("messages.yml");
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
 
         this.currentServerName = Bukkit.getServer().getMotd();
         this.serverNames = this.config.getStringList("serverNames").toArray(new String[0]);
@@ -121,12 +129,24 @@ public class StelyTeamPlugin extends JavaPlugin {
     }
 
 
-    private YamlConfiguration initFile(File dataFolder, String fileName) {
-        final File file = new File(dataFolder, fileName);
+    public YamlConfiguration initFile(@NotNull String fileName) throws FileNotFoundException {
+        plugin.saveDefaultConfig();
+        final File file = new File(plugin.getDataFolder(), fileName);
+        Path parentDir = Paths.get(file.getParent());
+
+        if (!Files.exists(parentDir)) {
+            try {
+                Files.createDirectories(parentDir);
+            } catch (IOException e) {
+                throw new FileNotFoundException("Unable to create directories for path: " + parentDir);
+            }
+        }
+
         if (!file.exists()) {
             try {
-                Files.copy(Objects.requireNonNull(getResource(fileName)), file.toPath());
+                Files.copy(plugin.getResource(fileName), file.toPath());
             } catch (IOException ignored) {
+                throw new FileNotFoundException("Unable to copy file from resources");
             }
         }
         return YamlConfiguration.loadConfiguration(file);

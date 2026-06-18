@@ -21,36 +21,17 @@ public class ColorsBuilder {
     }
 
     public static String replaceColor(final String input) {
-        final StringBuffer legacyBuilder = new StringBuffer();
-        final Pattern allPattern = Pattern.compile("(&)?&([0-9a-fk-orA-FK-OR])");
-        final Matcher legacyMatcher = allPattern.matcher(input);
-        legacyLoop:
-        while (legacyMatcher.find()) {
-            final boolean isEscaped = legacyMatcher.group(1) != null;
-            if (!isEscaped) {
-                final char code = legacyMatcher.group(2).toLowerCase(Locale.ROOT).charAt(0);
-                for (final ChatColor color : ChatColor.values()) {
-                    if (color.getChar() == code) {
-                        legacyMatcher.appendReplacement(legacyBuilder, ChatColor.COLOR_CHAR + "$2");
-                        continue legacyLoop;
-                    }
-                }
-            }
-            legacyMatcher.appendReplacement(legacyBuilder, "&$2");
-        }
-        legacyMatcher.appendTail(legacyBuilder);
-
-        final StringBuffer rgbBuilder = new StringBuffer();
+        final StringBuilder rgbBuilder = new StringBuilder();
         Pattern hexPattern = Pattern.compile("&#[A-Fa-f0-9]{6}");
-        final Matcher rgbMatcher = hexPattern.matcher(legacyBuilder.toString());
+        final Matcher rgbMatcher = hexPattern.matcher(input);
         while (rgbMatcher.find()) {
             final String hexCode = rgbMatcher.group().replace("&#", "");
             rgbMatcher.appendReplacement(rgbBuilder, parseHexColor(hexCode));
         }
         rgbMatcher.appendTail(rgbBuilder);
-        return rgbBuilder.toString();
-    }
 
+        return ChatColor.translateAlternateColorCodes('&', rgbBuilder.toString());
+    }
 
     public boolean prefixTeamIsTooLong(String prefixTeam){
         int colors = getPrefixColors(prefixTeam).size();
