@@ -2,7 +2,7 @@ name: StelyTeam
 author: Army_
 version: "${project.version}"
 main: fr.army.stelyteam.StelyTeamPlugin
-api-version: "1.16"
+api-version: "26.2"
 depend:
   - "Vault"
   - "NoQueuePluginMessage"

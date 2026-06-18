@@ -1,7 +1,5 @@
 package fr.army.stelyteam.utils.builder;
 
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.properties.Property;
 import fr.army.stelyteam.StelyTeamPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -12,35 +10,22 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.profile.PlayerProfile;
+import org.bukkit.profile.PlayerTextures;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 public class ItemBuilder {
-	private static final Field profileField;
-	private static final Constructor<?> profileConstructor;
-	private static final UUID genericUUID;
-
-	static {
-		genericUUID = new UUID(0L, 0L);
-		try {
-			final Class<?> cSkullMetaClass = Class
-					.forName(Bukkit.getServer().getClass().getPackage().getName() + ".inventory.CraftMetaSkull");
-			profileField = cSkullMetaClass.getDeclaredField("profile");
-			profileField.setAccessible(true);
-			final Class<?> nmsResolvableProfileClass = Class
-					.forName("net.minecraft.world.item.component.ResolvableProfile");
-			profileConstructor = nmsResolvableProfileClass.getDeclaredConstructor(GameProfile.class);
-			profileConstructor.setAccessible(true);
-		} catch (ClassNotFoundException | NoSuchFieldException | NoSuchMethodException e) {
-			throw new RuntimeException(e);
-		}
-	}
+	private static final UUID GENERIC_UUID = new UUID(0L, 0L);
+	private static final Pattern TEXTURE_URL_PATTERN = Pattern.compile("\"url\"\\s*:\\s*\"([^\"]+)\"");
 
 	public static ItemStack getItem(Material material, String buttonName, String displayName, List<String> lore, String headTexture, boolean isEnchanted) {
 		if (material.equals(Material.PLAYER_HEAD) && !headTexture.isBlank()) return getCustomHead(headTexture, buttonName, displayName, lore, null);
@@ -75,46 +60,13 @@ public class ItemBuilder {
 	}
 
 
-	private static void applyProfile(SkullMeta meta, GameProfile profile) {
-		Objects.requireNonNull(meta);
-		try {
-			profileField.set(meta, profileConstructor.newInstance(profile));
-		} catch (IllegalAccessException | InvocationTargetException | InstantiationException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	private static GameProfile getProfile(String textures, String signature) {
-		return getProfile(genericUUID, textures, signature);
-	}
-
-	private static GameProfile getProfile(UUID uuid, String textures, String signature) {
-		final GameProfile profile = new GameProfile(uuid, "");
-		profile.getProperties().put("textures", new Property("textures", textures, signature));
-		return profile;
-	}
-
 	private static ItemStack getCustomHead(String texture, String buttonName, String name, List<String> lore, UUID uuid) {
 		ItemStack item = new ItemStack(Material.PLAYER_HEAD);
 		SkullMeta skullMeta = (SkullMeta) item.getItemMeta();
 
-		UUID headUuid = uuid == null ? genericUUID : uuid;
-		// String playerName = uuid == null ? "" : Bukkit.getOfflinePlayer(uuid).getName();
-		//
-		// if (playerName == null) {
-		// 	playerName = "";
-		// }
-
-		GameProfile profile;
 		if (texture != null) {
-			profile = getProfile(headUuid, texture, "");
-			applyProfile(skullMeta, profile);
+			applyTexture(skullMeta, uuid == null ? GENERIC_UUID : uuid, texture);
 		}
-		// else {
-		// 	profile = new GameProfile(headUuid, "Steve");
-		// }
-
-		// applyProfile(skullMeta, profile);
 
 		skullMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
 		skullMeta.addItemFlags(ItemFlag.HIDE_DESTROYS);
@@ -139,5 +91,53 @@ public class ItemBuilder {
 		skullMeta.setDisplayName(name);
 		item.setItemMeta(skullMeta);
 		return item;
+	}
+
+	private static void applyTexture(SkullMeta skullMeta, UUID uuid, String texture) {
+		URL skinUrl = getSkinUrl(texture);
+		if (skinUrl == null) {
+			return;
+		}
+
+		PlayerProfile profile = Bukkit.createPlayerProfile(uuid);
+		PlayerTextures textures = profile.getTextures();
+		textures.setSkin(skinUrl);
+		profile.setTextures(textures);
+		skullMeta.setOwnerProfile(profile);
+	}
+
+	private static URL getSkinUrl(String texture) {
+		String cleanTexture = texture.trim();
+		if (cleanTexture.isEmpty()) {
+			return null;
+		}
+
+		if (cleanTexture.startsWith("http://") || cleanTexture.startsWith("https://")) {
+			return toUrl(cleanTexture);
+		}
+
+		if (cleanTexture.matches("[a-fA-F0-9]{32,}")) {
+			return toUrl("http://textures.minecraft.net/texture/" + cleanTexture);
+		}
+
+		String paddedTexture = cleanTexture + "=".repeat((4 - cleanTexture.length() % 4) % 4);
+		try {
+			String decodedTexture = new String(Base64.getDecoder().decode(paddedTexture), StandardCharsets.UTF_8);
+			Matcher matcher = TEXTURE_URL_PATTERN.matcher(decodedTexture);
+			if (matcher.find()) {
+				return toUrl(matcher.group(1).replace("\\/", "/"));
+			}
+		} catch (IllegalArgumentException ignored) {
+			return null;
+		}
+		return null;
+	}
+
+	private static URL toUrl(String value) {
+		try {
+			return new URL(value);
+		} catch (MalformedURLException exception) {
+			return null;
+		}
 	}
 }
