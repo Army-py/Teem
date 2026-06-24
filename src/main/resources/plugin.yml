@@ -6,6 +6,7 @@ api-version: "26.2"
 depend:
   - "Vault"
   - "NoQueuePluginMessage"
+  - "NBTAPI"
 softdepend:
   - "Jobs"
   - "StelyClaim"
