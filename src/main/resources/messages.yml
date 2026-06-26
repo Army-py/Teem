@@ -183,6 +183,7 @@ commands:
       - "§a/st changeowner <team> <membre> : §7Change le propriétaire de la team"
       - "§a/st addmember <team> <joueur> : §7Ajoute un membre dans la team"
       - "§a/st removemember <team> <joueur> : §7Retire un membre de la team"
+      - "§a/st convertstorage : §7Convertit les stockages vers le format NBT"
   stelyteam_home:
     not_set: "§cLe home n'est pas défini."
     teleport: "§aTéléportation au home de la team."

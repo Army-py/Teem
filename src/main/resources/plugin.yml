@@ -2,10 +2,11 @@ name: StelyTeam
 author: Army_
 version: "${project.version}"
 main: fr.army.stelyteam.StelyTeamPlugin
-api-version: "1.16"
+api-version: "1.21"
 depend:
   - "Vault"
   - "NoQueuePluginMessage"
+  - "NBTAPI"
 softdepend:
   - "Jobs"
   - "StelyClaim"
@@ -98,5 +99,10 @@ commands:
     removemember:
       description: "Enlève un membre de la team"
       usage: "/stelyteam removemember <team> <player>"
+      permissions:
+        default: "op"
+    convertstorage:
+      description: "Convertit les stockages de team vers le format NBT"
+      usage: "/stelyteam convertstorage"
       permissions:
         default: "op"

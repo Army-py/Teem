@@ -3,66 +3,89 @@ package fr.army.stelyteam.utils.manager.serializer;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
+import de.tr7zw.nbtapi.NBT;
+import de.tr7zw.nbtapi.iface.ReadWriteNBT;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.io.BukkitObjectInputStream;
-import org.bukkit.util.io.BukkitObjectOutputStream;
-import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 
 import fr.army.stelyteam.StelyTeamPlugin;
 
 
 public class ItemStackSerializer {
+    private static final byte[] STORAGE_FORMAT_HEADER = new byte[] {'S', 'T', 'N', 'B', 'T', '1', 0};
+    private static final String STORAGE_ITEMS_KEY = "items";
 
     public String serializeToBase64(ItemStack[] itemStack) {
-        try {
-            final ByteArrayOutputStream arrayOutputStream = new ByteArrayOutputStream();
-            final BukkitObjectOutputStream objectOutputStream = new BukkitObjectOutputStream(arrayOutputStream);
-            objectOutputStream.writeObject(itemStack);
-            return Base64Coder.encodeLines(arrayOutputStream.toByteArray());
-        } catch (final Exception exception) {
-            throw new RuntimeException("Error turning ItemStack into base64", exception);
-        }
+        return Base64.getMimeEncoder().encodeToString(serializeToByte(itemStack));
     }
 
 
     public ItemStack[] deserializeFromBase64(String base64) {
-        try {
-            final ByteArrayInputStream arrayInputStream = new ByteArrayInputStream(Base64Coder.decodeLines(base64));
-            final BukkitObjectInputStream objectInputStream = new BukkitObjectInputStream(arrayInputStream);
-            return (ItemStack[]) objectInputStream.readObject();
-        } catch (final Exception exception) {
-            throw new RuntimeException("Error turning base64 into ItemStack", exception);
-        }
+        return deserializeFromByte(Base64.getMimeDecoder().decode(base64));
     }
 
 
     public byte[] serializeToByte(ItemStack[] itemStack) {
         try {
             final ByteArrayOutputStream arrayOutputStream = new ByteArrayOutputStream();
-
-            final BukkitObjectOutputStream objectOutputStream = new BukkitObjectOutputStream(arrayOutputStream);
-            // objectOutputStream.writeObject(removeUnsedSlots(itemStack));
-            objectOutputStream.writeObject(itemStack);
-            objectOutputStream.flush();
-
+            arrayOutputStream.write(STORAGE_FORMAT_HEADER);
+            final ReadWriteNBT storageNbt = NBT.createNBTObject();
+            storageNbt.setItemStackArray(STORAGE_ITEMS_KEY, itemStack);
+            storageNbt.writeCompound(arrayOutputStream);
 
             return arrayOutputStream.toByteArray();
         } catch (final Exception exception) {
-            throw new RuntimeException("Error turning ItemStack into byte", exception);
+            throw new RuntimeException("Error turning ItemStack into NBT storage bytes", exception);
         }
     }
 
 
     public ItemStack[] deserializeFromByte(byte[] bytes) {
         if (bytes.length == 0) return new ItemStack[0];
+        if (isNbtStorageFormat(bytes)) return deserializeFromNbtStorage(bytes);
+        return deserializeLegacyBukkitStorage(bytes);
+    }
+
+
+    public byte[] convertLegacyStorageToNbt(byte[] bytes) {
+        if (bytes.length == 0 || isNbtStorageFormat(bytes)) return bytes;
+        return serializeToByte(deserializeLegacyBukkitStorage(bytes));
+    }
+
+
+    public boolean isNbtStorageFormat(byte[] bytes) {
+        if (bytes.length < STORAGE_FORMAT_HEADER.length) return false;
+        for (int i = 0; i < STORAGE_FORMAT_HEADER.length; i++) {
+            if (bytes[i] != STORAGE_FORMAT_HEADER[i]) return false;
+        }
+        return true;
+    }
+
+
+    private ItemStack[] deserializeFromNbtStorage(byte[] bytes) {
+        try {
+            final ByteArrayInputStream arrayInputStream = new ByteArrayInputStream(
+                    bytes,
+                    STORAGE_FORMAT_HEADER.length,
+                    bytes.length - STORAGE_FORMAT_HEADER.length
+            );
+            return NBT.readNBT(arrayInputStream).getItemStackArray(STORAGE_ITEMS_KEY);
+        } catch (final Exception exception) {
+            throw new RuntimeException("Error turning NBT storage bytes into ItemStack", exception);
+        }
+    }
+
+
+    private ItemStack[] deserializeLegacyBukkitStorage(byte[] bytes) {
         try {
             final ByteArrayInputStream arrayInputStream = new ByteArrayInputStream(bytes);
             final BukkitObjectInputStream objectInputStream = new BukkitObjectInputStream(arrayInputStream);
             return (ItemStack[]) objectInputStream.readObject();
         } catch (final Exception exception) {
-            throw new RuntimeException("Error turning byte into ItemStack", exception);
+            throw new RuntimeException("Error turning legacy Bukkit storage bytes into ItemStack", exception);
         }
     }
 
